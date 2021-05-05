@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
-from forms import UserAddForm, LoginForm, MessageForm, UserUpdateForm
+from forms import UserAddForm, LoginForm, MessageForm, UserUpdateForm, ForValidationForm
 from models import db, connect_db, User, Message
 
 CURR_USER_KEY = "curr_user"
@@ -35,6 +35,7 @@ def add_user_to_g():
 
     if CURR_USER_KEY in session:
         g.user = User.query.get(session[CURR_USER_KEY])
+        g.form = ForValidationForm()
 
     else:
         g.user = None
@@ -113,10 +114,12 @@ def login():
 def logout():
     """Handle logout of user - deletes user from session and
         redirects to login page."""
-    #utilize wtform to validate user logged in before logging out
-    do_logout()
-    flash("Successfully logged out", 'success')
-    return redirect("/login")
+    form = ForValidationForm()
+
+    if form.validate_on_submit():
+        do_logout()
+        flash("Successfully logged out", 'success')
+        return redirect("/login")    
 
 
 ##############################################################################
@@ -211,22 +214,24 @@ def profile():
         return redirect("/")
 
     form = UserUpdateForm(obj=g.user)
+
     if form.validate_on_submit() and User.authenticate(g.user.username, form.password.data):
-            # flash("Unauthorized!")
-            # return render_template("users/edit.html", form=form)
-        # else:
         g.user.username = form.username.data
         g.user.email = form.email.data
-        g.user.image_url = form.image_url.data
-        g.user.header_image_url = form.header_image_url.data
+        g.user.image_url = form.image_url.data or User.image_url.default.arg
+        g.user.header_image_url = form.header_image_url.data or User.header_image_url.default.arg
         g.user.bio = form.bio.data
 
         db.session.commit()
         return redirect(f"/users/{g.user.id}")
 
-            # TODO make sure user has default image if user does not supply image
-        
+    if form.validate_on_submit() and not User.authenticate(g.user.username, form.password.data):
+        flash("Unauthorized!", 'danger')
+
     return render_template("users/edit.html", form=form)
+
+
+        
 
 
 @app.route('/users/delete', methods=["POST"])
