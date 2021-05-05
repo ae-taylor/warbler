@@ -109,13 +109,13 @@ def login():
     return render_template('users/login.html', form=form)
 
 
-@app.route('/logout')
+@app.route('/logout', methods=["POST"])
 def logout():
     """Handle logout of user - deletes user from session and
         redirects to login page."""
-
-    flash("Successfully logged out")
+    #utilize wtform to validate user logged in before logging out
     do_logout()
+    flash("Successfully logged out", 'success')
     return redirect("/login")
 
 
@@ -211,22 +211,22 @@ def profile():
         return redirect("/")
 
     form = UserUpdateForm(obj=g.user)
-    # user = g.user
-    if form.validate_on_submit():
-        if not User.authenticate(g.user.username, form.password.data):
-            flash("Unauthorized!")
-            return redirect("/")
-        else:
-            g.user.username = form.username.data
-            g.user.email = form.email.data
-            g.user.image_url = form.image_url.data
-            g.user.header_image_url = form.header_image_url.data
-            g.user.bio = form.bio.data
+    if form.validate_on_submit() and User.authenticate(g.user.username, form.password.data):
+            # flash("Unauthorized!")
+            # return render_template("users/edit.html", form=form)
+        # else:
+        g.user.username = form.username.data
+        g.user.email = form.email.data
+        g.user.image_url = form.image_url.data
+        g.user.header_image_url = form.header_image_url.data
+        g.user.bio = form.bio.data
 
-            db.session.commit()
-            return redirect(f"/users/{g.user.id}")
-    else:
-        return render_template("users/edit.html", form=form)
+        db.session.commit()
+        return redirect(f"/users/{g.user.id}")
+
+            # TODO make sure user has default image if user does not supply image
+        
+    return render_template("users/edit.html", form=form)
 
 
 @app.route('/users/delete', methods=["POST"])
@@ -305,10 +305,12 @@ def homepage():
     - anon users: no messages
     - logged in: 100 most recent messages of followed_users
     """
-
+    # breakpoint()
     if g.user:
+        following_ids = [u.id for u in g.user.following]
         messages = (Message
                     .query
+                    .filter((Message.user_id.in_(following_ids)) | (Message.user_id == g.user.id))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
