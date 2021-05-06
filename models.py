@@ -75,6 +75,10 @@ class User(db.Model):
     )
 
     messages = db.relationship('Message', order_by='Message.timestamp.desc()')
+    
+    likes = db.relationship(
+        'Message',
+        secondary="likes")
 
     followers = db.relationship(
         "User",
@@ -173,6 +177,24 @@ class Message(db.Model):
     )
 
     user = db.relationship('User')
+
+
+class Like(db.Model):
+    """Maps users likes to messages/warbles"""
+
+    __tablename__ = "likes"
+    
+    id = db.Column(db.Integer,
+        primary_key=True,
+        autoincrement=True)
+
+    user_id = db.Column(db.Integer,
+        db.ForeignKey('users.id'))
+        # nullable=False))
+    
+    message_id = db.Column(db.Integer,
+        db.ForeignKey('messages.id'))
+        # nullable=False))
 
 
 def connect_db(app):
