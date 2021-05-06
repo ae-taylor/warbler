@@ -84,7 +84,7 @@ class User(db.Model):
     )
 
     following = db.relationship(
-        "User",
+        "User", 
         secondary="follows",
         primaryjoin=(Follows.user_following_id == id),
         secondaryjoin=(Follows.user_being_followed_id == id)
