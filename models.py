@@ -190,7 +190,7 @@ class Like(db.Model):
 
     user_id = db.Column(db.Integer,
         db.ForeignKey('users.id'))
-        # nullable=False))
+        # nullable=False))7
     
     message_id = db.Column(db.Integer,
         db.ForeignKey('messages.id'))
