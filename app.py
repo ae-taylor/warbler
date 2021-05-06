@@ -298,6 +298,42 @@ def messages_destroy(message_id):
 
     return redirect(f"/users/{g.user.id}")
 
+##############################################################################
+# Like routes:
+
+@app.route("/messages/<int:message_id>/like", methods=["POST"])
+def handle_like(message_id):
+    """ handle liking and unliking of warbles """
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    form = ForValidationForm()
+
+    if form.validate_on_submit():
+
+        like = Like.query.filter(g.user.id==Like.user_id and Like.message_id==message_id).first()
+        user_likes_ids = [l.id for l in g.user.likes]
+        liked_msg = message_id in user_likes_ids
+        msg = Message.query.get_or_404(message_id)
+
+        if msg.user_id == g.user.id:
+            flash("Sorry, you cannot like your own message!", 'danger')
+            return redirect(f"/users/{g.user.id}")
+            
+        if liked_msg:
+            flash("message unliked!", 'danger')
+            db.session.delete(like)
+
+        else:
+            flash("message liked!", 'success')
+            new_like = Like(user_id=g.user.id, message_id=message_id)
+            db.session.add(new_like)
+
+        db.session.commit()
+        return redirect(f"/users/{g.user.id}")
+
 
 ##############################################################################
 # Homepage and error pages
