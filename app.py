@@ -303,7 +303,7 @@ def messages_destroy(message_id):
 
 @app.route("/messages/<int:message_id>/like", methods=["POST"])
 def handle_like(message_id):
-    """ handle liking and unliking of warbles """
+    """ handle liking and unliking of warbles/messages """
 
     if not g.user:
         flash("Access unauthorized.", "danger")
@@ -317,6 +317,7 @@ def handle_like(message_id):
         user_likes_ids = [l.id for l in g.user.likes]
         liked_msg = message_id in user_likes_ids
         msg = Message.query.get_or_404(message_id)
+        
 
         if msg.user_id == g.user.id:
             flash("Sorry, you cannot like your own message!", 'danger')
@@ -330,9 +331,22 @@ def handle_like(message_id):
             flash("message liked!", 'success')
             new_like = Like(user_id=g.user.id, message_id=message_id)
             db.session.add(new_like)
-
+            
         db.session.commit()
         return redirect(f"/users/{g.user.id}")
+
+
+@app.route('/users/<int:user_id>/likes')
+def show_user_likes(user_id):
+    """If user is not logged in, redirect to homepage
+        else, render template for list of user-liked messages """
+    if not g.user:
+            flash("Access unauthorized.", "danger")
+            return redirect("/")
+    
+    
+    user = User.query.get_or_404(g.user.id)
+    return render_template('users/likes.html', user=user, likes=user.likes)
 
 
 ##############################################################################
@@ -345,6 +359,7 @@ def homepage():
 
     - anon users: no messages
     - logged in: 100 most recent messages of followed_users
+       with stars beside favorited messages
     """
     # breakpoint()
     if g.user:
@@ -355,8 +370,9 @@ def homepage():
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
+        likes_msg_id = [l.id for l in g.user.likes]
 
-        return render_template('home.html', messages=messages)
+        return render_template('home.html', messages=messages, likes = likes_msg_id)
 
     else:
         return render_template('home-anon.html')

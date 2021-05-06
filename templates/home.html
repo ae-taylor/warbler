@@ -55,9 +55,13 @@
           <span class="text-muted">{{ msg.timestamp.strftime('%d %B %Y') }}</span>
           <p>{{ msg.text }}</p>
         </div>
-        <form action="messages/{{msg.id}}/like" method="POST" class="messages-like">
+        <form action="/messages/{{msg.id}}/like" method="POST" class="messages-like">
           {{ g.form.hidden_tag() }}
+          {% if msg.id in likes %}
+          <button><i class="fas fa-star"></i></button>
+          {% else %}
           <button><i class="far fa-star"></i></button>
+          {% endif %}
         </form>
         <!-- TODO - implement favoriting warble functionality -->
       </li>
