@@ -76,8 +76,7 @@ class User(db.Model):
 
     messages = db.relationship('Message', order_by='Message.timestamp.desc()')
     
-    # change to liked_messages?
-    message_likes = db.relationship(
+    liked_messages = db.relationship(
         'Message',
         secondary="likes")
 
@@ -196,6 +195,9 @@ class Like(db.Model):
     message_id = db.Column(db.Integer,
         db.ForeignKey('messages.id'),
         primary_key=True)
+
+    def __repr__(self):
+        return f"<Like #{self.user_id}: {self.message_id}>"
 
 
 def connect_db(app):

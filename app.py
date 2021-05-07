@@ -114,6 +114,7 @@ def login():
 def logout():
     """Handle logout of user - deletes user from session and
         redirects to login page."""
+    
     form = ForValidationForm()
 
     if form.validate_on_submit():
@@ -128,7 +129,6 @@ def logout():
 @app.route('/users')
 def list_users():
     """Page with listing of users.
-
     Can take a 'q' param in querystring to search by that username.
     """
 
@@ -147,9 +147,9 @@ def users_show(user_id):
     """Show user profile."""
 
     user = User.query.get_or_404(user_id)
-    likes_msg_id = [lm.id for lm in g.user.message_likes]
+    liked_msg_ids = [lm.id for lm in g.user.liked_messages]
 
-    return render_template('users/show.html', user=user, likes=likes_msg_id)
+    return render_template('users/show.html', user=user, likes=liked_msg_ids)
 
 
 @app.route('/users/<int:user_id>/following')
@@ -183,12 +183,14 @@ def add_follow(follow_id):
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
+    
+    form = ForValidationForm()
+    if form.validate_on_submit():
+        followed_user = User.query.get_or_404(follow_id)
+        g.user.following.append(followed_user)
+        db.session.commit()
 
-    followed_user = User.query.get_or_404(follow_id)
-    g.user.following.append(followed_user)
-    db.session.commit()
-
-    return redirect(f"/users/{g.user.id}/following")
+        return redirect(f"/users/{g.user.id}/following")
 
 
 @app.route('/users/stop-following/<int:follow_id>', methods=['POST'])
@@ -199,11 +201,14 @@ def stop_following(follow_id):
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    followed_user = User.query.get(follow_id)
-    g.user.following.remove(followed_user)
-    db.session.commit()
+    form = ForValidationForm()
 
-    return redirect(f"/users/{g.user.id}/following")
+    if form.validate_on_submit():
+        followed_user = User.query.get(follow_id)
+        g.user.following.remove(followed_user)
+        db.session.commit()
+
+        return redirect(f"/users/{g.user.id}/following")
 
 
 @app.route('/users/profile', methods=["GET", "POST"])
@@ -216,6 +221,9 @@ def profile():
 
     form = UserUpdateForm(obj=g.user)
 
+    if form.validate_on_submit() and not User.authenticate(g.user.username, form.password.data):
+        flash("Unauthorized!", 'danger')
+
     if form.validate_on_submit() and User.authenticate(g.user.username, form.password.data):
         g.user.username = form.username.data
         g.user.email = form.email.data
@@ -226,13 +234,7 @@ def profile():
         db.session.commit()
         return redirect(f"/users/{g.user.id}")
 
-    if form.validate_on_submit() and not User.authenticate(g.user.username, form.password.data):
-        flash("Unauthorized!", 'danger')
-
     return render_template("users/edit.html", form=form)
-
-
-        
 
 
 @app.route('/users/delete', methods=["POST"])
@@ -243,16 +245,20 @@ def delete_user():
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    do_logout()
+    form = ForValidationForm()
+    if form.validate_on_submit():
 
-    db.session.delete(g.user)
-    db.session.commit()
+        do_logout()
 
-    return redirect("/signup")
+        db.session.delete(g.user)
+        db.session.commit()
+
+        return redirect("/signup")
 
 
 ##############################################################################
 # Messages routes:
+
 
 @app.route('/messages/new', methods=["GET", "POST"])
 def messages_add():
@@ -282,9 +288,9 @@ def messages_show(message_id):
     """Show a message."""
 
     msg = Message.query.get(message_id)
-    likes_msg_id = [lm.id for lm in g.user.message_likes]
+    liked_msg_ids = [lm.id for lm in g.user.liked_messages]
 
-    return render_template('messages/show.html', message=msg, likes=likes_msg_id)
+    return render_template('messages/show.html', message=msg, likes=liked_msg_ids)
 
 
 @app.route('/messages/<int:message_id>/delete', methods=["POST"])
@@ -307,16 +313,19 @@ def messages_destroy(message_id):
     flash("Action unauthorized!", 'danger')
     return redirect("/")
 
+
 ##############################################################################
 # Like routes:
 
-def handle_like_unlike(message_id):
+
+def handle_like_unlike(message_id, user_id):
     """ helper function that handles liking or unliking messages"""
 
-    like = Like.query.filter(g.user.id==Like.user_id and Like.message_id==message_id).first()
-    user_likes_ids = [l.id for l in g.user.message_likes]
-    liked_msg = message_id in user_likes_ids
+    user_likes_ids = [lm.id for lm in g.user.liked_messages] # << message ID for each message in liked messages
+    liked_msg = message_id in user_likes_ids # < boolean - if current message id is in the ^^ 
     msg = Message.query.get_or_404(message_id)
+
+    # breakpoint()
     
     if msg.user_id == g.user.id:
         flash("Sorry, you cannot like your own message!", 'danger')
@@ -324,6 +333,7 @@ def handle_like_unlike(message_id):
         
     if liked_msg:
         flash("message unliked!", 'danger')
+        like = Like.query.filter(Like.user_id==g.user.id, Like.message_id==msg.id).first()
         db.session.delete(like)
 
     else:
@@ -345,7 +355,7 @@ def handle_like_unlike_routing(message_id):
     form = ForValidationForm()
     route = request.form["route"]
     if form.validate_on_submit():
-        handle_like_unlike(message_id)
+        handle_like_unlike(message_id, g.user.id)
 
         return redirect(route)
 
@@ -354,14 +364,13 @@ def handle_like_unlike_routing(message_id):
 def show_user_likes(user_id):
     """If user is not logged in, redirect to homepage
         else, render template for list of user-liked messages """
+
     if not g.user:
             flash("Access unauthorized.", "danger")
             return redirect("/")
     
-    
-    user = User.query.get_or_404(g.user.id)
-    # pass in user_id instead
-    return render_template('users/likes.html', user=user, likes=user.message_likes)
+    user = User.query.get_or_404(user_id)
+    return render_template('users/likes.html', user=user, likes=user.liked_messages)
 
 
 ##############################################################################
@@ -376,7 +385,7 @@ def homepage():
     - logged in: 100 most recent messages of followed_users
        with stars beside favorited messages
     """
-    # breakpoint()
+    
     if g.user:
         following_ids = [u.id for u in g.user.following]
         messages = (Message
@@ -385,9 +394,10 @@ def homepage():
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
-        likes_msg_id = [lm.id for lm in g.user.message_likes]
 
-        return render_template('home.html', messages=messages, likes = likes_msg_id)
+        liked_msg_ids = [lm.id for lm in g.user.liked_messages]
+
+        return render_template('home.html', messages=messages, likes = liked_msg_ids)
 
     else:
         return render_template('home-anon.html')
