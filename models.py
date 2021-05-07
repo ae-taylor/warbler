@@ -76,6 +76,7 @@ class User(db.Model):
 
     messages = db.relationship('Message', order_by='Message.timestamp.desc()')
     
+    # change to liked_messages?
     message_likes = db.relationship(
         'Message',
         secondary="likes")

@@ -360,6 +360,7 @@ def show_user_likes(user_id):
     
     
     user = User.query.get_or_404(g.user.id)
+    # pass in user_id instead
     return render_template('users/likes.html', user=user, likes=user.message_likes)
 
 
