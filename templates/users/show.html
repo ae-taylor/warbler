@@ -21,7 +21,7 @@
             <form action="/messages/{{message.id}}/like" method="POST" class="messages-like">
               {{ g.form.hidden_tag() }}
               <input type="hidden" name="route" value="/users/{{ user.id }}">
-              {% if message.id in likes %}
+              {% if message.id in user.liked_messages %}
               <button><i class="fas fa-star"></i></button>
               {% else %}
               <button><i class="far fa-star"></i></button>

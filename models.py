@@ -178,6 +178,9 @@ class Message(db.Model):
 
     user = db.relationship('User')
 
+    def __repr__(self):
+        return f"<Message {self.id}, {self.text}, {self.timestamp}, {self.user_id}>"
+
 
 class Like(db.Model):
     """Maps users likes to messages/warbles"""
@@ -197,7 +200,7 @@ class Like(db.Model):
         primary_key=True)
 
     def __repr__(self):
-        return f"<Like #{self.user_id}: {self.message_id}>"
+        return f"<Like {self.user_id} {self.message_id}>"
 
 
 def connect_db(app):

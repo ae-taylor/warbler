@@ -3,7 +3,7 @@
 {% block content %}
 <div class="col-lg-6 col-md-8 col-sm-12">
     <ul class="list-group" id="likes">
-      {% for msg in likes %}
+      {% for msg in g.user.liked_messages %}
       <li class="list-group-item">
         <a href="/messages/{{ msg.id }}" class="message-link" />
         <a href="/users/{{ msg.user_id }}">
@@ -16,7 +16,7 @@
         </div>
         <form action="/messages/{{msg.id}}/like" method="POST" class="messages-like">
           {{ g.form.hidden_tag() }}
-          <input type="hidden" name="route" value="/users/{{msg.user.id}}/likes">
+          <input type="hidden" name="route" value="/users/{{msg.user_id}}/likes">
           <button><i class="fas fa-star"></i></button>
         </form>
       </li>

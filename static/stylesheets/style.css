@@ -1,5 +1,9 @@
 /* ====================== General */
 
+.alert {
+  z-index: 2;
+}
+
 body {
   background-color: #e6ecf0;
 }

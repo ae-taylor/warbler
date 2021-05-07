@@ -318,34 +318,32 @@ def messages_destroy(message_id):
 # Like routes:
 
 
-def handle_like_unlike(message_id, user_id):
+def _handle_like_unlike(message_id, user_id):
     """ helper function that handles liking or unliking messages"""
 
-    user_likes_ids = [lm.id for lm in g.user.liked_messages] # << message ID for each message in liked messages
-    liked_msg = message_id in user_likes_ids # < boolean - if current message id is in the ^^ 
+    user_likes_ids = [lm.id for lm in g.user.liked_messages] 
+    is_liked = message_id in user_likes_ids 
     msg = Message.query.get_or_404(message_id)
 
-    # breakpoint()
+    # TODO create model methods for logic here
     
     if msg.user_id == g.user.id:
         flash("Sorry, you cannot like your own message!", 'danger')
         return redirect(f"/users/{g.user.id}")
         
-    if liked_msg:
+    if is_liked:
+        g.user.liked_messages.remove(msg)
         flash("message unliked!", 'danger')
-        like = Like.query.filter(Like.user_id==g.user.id, Like.message_id==msg.id).first()
-        db.session.delete(like)
 
     else:
+        g.user.liked_messages.append(msg)
         flash("message liked!", 'success')
-        new_like = Like(user_id=g.user.id, message_id=message_id)
-        db.session.add(new_like)
 
     db.session.commit()
 
 
 @app.route("/messages/<int:message_id>/like", methods=["POST"])
-def handle_like_unlike_routing(message_id):
+def handle_message_like_unlike(message_id):
     """ handles the different routes for liking/unliking messages """
 
     if not g.user:
@@ -353,12 +351,15 @@ def handle_like_unlike_routing(message_id):
         return redirect("/")
 
     form = ForValidationForm()
-    route = request.form["route"]
+    # route = request.form["route"]
+    referrer = request.referrer
     if form.validate_on_submit():
-        handle_like_unlike(message_id, g.user.id)
+        _handle_like_unlike(message_id, g.user.id)
 
-        return redirect(route)
+        if referrer:
+            return redirect(referrer)
 
+        return redirect("/")
 
 @app.route('/users/<int:user_id>/likes')
 def show_user_likes(user_id):
@@ -368,9 +369,10 @@ def show_user_likes(user_id):
     if not g.user:
             flash("Access unauthorized.", "danger")
             return redirect("/")
-    
-    user = User.query.get_or_404(user_id)
-    return render_template('users/likes.html', user=user, likes=user.liked_messages)
+
+    # TODO handle authoriztion for this route
+    # TODO be able to see likes of other users when go to their profile
+    return render_template('users/likes.html')
 
 
 ##############################################################################
@@ -395,9 +397,9 @@ def homepage():
                     .limit(100)
                     .all())
 
-        liked_msg_ids = [lm.id for lm in g.user.liked_messages]
+        liked_msg_ids = {lm.id for lm in g.user.liked_messages}
 
-        return render_template('home.html', messages=messages, likes = liked_msg_ids)
+        return render_template('home.html', messages=messages, liked_msg_ids = liked_msg_ids)
 
     else:
         return render_template('home-anon.html')

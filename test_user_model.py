@@ -38,6 +38,21 @@ class UserModelTestCase(TestCase):
         Message.query.delete()
         Follows.query.delete()
 
+        user1 = User(
+            email="test@test1.com",
+            username="testuser1",
+            password="HASHED_PASSWORD"
+        )
+
+        user2 = User(
+            email="test@test2.com",
+            username="testuser2",
+            password="HASHED_PASSWORD"
+        )
+
+        db.session.add_all([user1, user2])
+        db.session.commit()
+
         self.client = app.test_client()
 
     def test_user_model(self):
@@ -55,3 +70,26 @@ class UserModelTestCase(TestCase):
         # User should have no messages & no followers
         self.assertEqual(len(u.messages), 0)
         self.assertEqual(len(u.followers), 0)
+
+    def test_follower_following_lists(self):
+        """ checks if followers/following lists are correct """
+
+        self.user1.following.append(self.user2)
+        db.session.commit()
+
+        self.assertEqual(len(self.user2.following), 0)
+        self.assertEqual(len(self.user2.followers), 1)
+
+        self.assertEqual(len(self.user1.following), 1)
+        self.assertEqual(len(self.user1.followers), 0)
+
+
+
+
+
+
+
+
+
+
+    
