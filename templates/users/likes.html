@@ -16,6 +16,7 @@
         </div>
         <form action="/messages/{{msg.id}}/like" method="POST" class="messages-like">
           {{ g.form.hidden_tag() }}
+          <input type="hidden" name="route" value="/users/{{msg.user.id}}/likes">
           <button><i class="fas fa-star"></i></button>
         </form>
       </li>

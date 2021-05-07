@@ -76,7 +76,7 @@ class User(db.Model):
 
     messages = db.relationship('Message', order_by='Message.timestamp.desc()')
     
-    likes = db.relationship(
+    message_likes = db.relationship(
         'Message',
         secondary="likes")
 
@@ -184,17 +184,17 @@ class Like(db.Model):
 
     __tablename__ = "likes"
     
-    id = db.Column(db.Integer,
-        primary_key=True,
-        autoincrement=True)
+    # id = db.Column(db.Integer,
+    #     primary_key=True,
+    #     autoincrement=True)
 
     user_id = db.Column(db.Integer,
-        db.ForeignKey('users.id'))
-        # nullable=False))7
+        db.ForeignKey('users.id'),
+        primary_key=True)
     
     message_id = db.Column(db.Integer,
-        db.ForeignKey('messages.id'))
-        # nullable=False))
+        db.ForeignKey('messages.id'),
+        primary_key=True)
 
 
 def connect_db(app):

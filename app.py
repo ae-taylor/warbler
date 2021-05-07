@@ -147,8 +147,9 @@ def users_show(user_id):
     """Show user profile."""
 
     user = User.query.get_or_404(user_id)
+    likes_msg_id = [lm.id for lm in g.user.message_likes]
 
-    return render_template('users/show.html', user=user)
+    return render_template('users/show.html', user=user, likes=likes_msg_id)
 
 
 @app.route('/users/<int:user_id>/following')
@@ -281,7 +282,9 @@ def messages_show(message_id):
     """Show a message."""
 
     msg = Message.query.get(message_id)
-    return render_template('messages/show.html', message=msg)
+    likes_msg_id = [lm.id for lm in g.user.message_likes]
+
+    return render_template('messages/show.html', message=msg, likes=likes_msg_id)
 
 
 @app.route('/messages/<int:message_id>/delete', methods=["POST"])
@@ -292,48 +295,59 @@ def messages_destroy(message_id):
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    msg = Message.query.get(message_id)
-    db.session.delete(msg)
-    db.session.commit()
+    form = ForValidationForm()
 
-    return redirect(f"/users/{g.user.id}")
+    if form.validate_on_submit():
+        msg = Message.query.get(message_id)
+        db.session.delete(msg)
+        db.session.commit()
+
+        return redirect(f"/users/{g.user.id}")
+    
+    flash("Action unauthorized!", 'danger')
+    return redirect("/")
 
 ##############################################################################
 # Like routes:
 
+def handle_like_unlike(message_id):
+    """ helper function that handles liking or unliking messages"""
+
+    like = Like.query.filter(g.user.id==Like.user_id and Like.message_id==message_id).first()
+    user_likes_ids = [l.id for l in g.user.message_likes]
+    liked_msg = message_id in user_likes_ids
+    msg = Message.query.get_or_404(message_id)
+    
+    if msg.user_id == g.user.id:
+        flash("Sorry, you cannot like your own message!", 'danger')
+        return redirect(f"/users/{g.user.id}")
+        
+    if liked_msg:
+        flash("message unliked!", 'danger')
+        db.session.delete(like)
+
+    else:
+        flash("message liked!", 'success')
+        new_like = Like(user_id=g.user.id, message_id=message_id)
+        db.session.add(new_like)
+
+    db.session.commit()
+
+
 @app.route("/messages/<int:message_id>/like", methods=["POST"])
-def handle_like(message_id):
-    """ handle liking and unliking of warbles/messages """
+def handle_like_unlike_routing(message_id):
+    """ handles the different routes for liking/unliking messages """
 
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
     form = ForValidationForm()
-
+    route = request.form["route"]
     if form.validate_on_submit():
+        handle_like_unlike(message_id)
 
-        like = Like.query.filter(g.user.id==Like.user_id and Like.message_id==message_id).first()
-        user_likes_ids = [l.id for l in g.user.likes]
-        liked_msg = message_id in user_likes_ids
-        msg = Message.query.get_or_404(message_id)
-        
-
-        if msg.user_id == g.user.id:
-            flash("Sorry, you cannot like your own message!", 'danger')
-            return redirect(f"/users/{g.user.id}")
-            
-        if liked_msg:
-            flash("message unliked!", 'danger')
-            db.session.delete(like)
-
-        else:
-            flash("message liked!", 'success')
-            new_like = Like(user_id=g.user.id, message_id=message_id)
-            db.session.add(new_like)
-            
-        db.session.commit()
-        return redirect(f"/users/{g.user.id}")
+        return redirect(route)
 
 
 @app.route('/users/<int:user_id>/likes')
@@ -346,7 +360,7 @@ def show_user_likes(user_id):
     
     
     user = User.query.get_or_404(g.user.id)
-    return render_template('users/likes.html', user=user, likes=user.likes)
+    return render_template('users/likes.html', user=user, likes=user.message_likes)
 
 
 ##############################################################################
@@ -370,7 +384,7 @@ def homepage():
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
-        likes_msg_id = [l.id for l in g.user.likes]
+        likes_msg_id = [lm.id for lm in g.user.message_likes]
 
         return render_template('home.html', messages=messages, likes = likes_msg_id)
 

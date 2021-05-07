@@ -57,6 +57,7 @@
         </div>
         <form action="/messages/{{msg.id}}/like" method="POST" class="messages-like">
           {{ g.form.hidden_tag() }}
+          <input type="hidden" name="route" value="/">
           {% if msg.id in likes %}
           <button><i class="fas fa-star"></i></button>
           {% else %}
