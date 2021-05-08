@@ -21,6 +21,8 @@
             <form action="/messages/{{message.id}}/like" method="POST" class="messages-like">
               {{ g.form.hidden_tag() }}
               <input type="hidden" name="route" value="/users/{{ user.id }}">
+              <!-- TODO make sure that solid/outlined star is correct
+                based on user liked messages - currently it is not working -->
               {% if message.id in user.liked_messages %}
               <button><i class="fas fa-star"></i></button>
               {% else %}
